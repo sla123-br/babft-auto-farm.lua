@@ -9,6 +9,7 @@ local autoFarmEnabled = false
 local speed = 362
 local currentTween = nil
 local isMinimized = false
+local sessionTime = 0
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BABFT_UltraFarm_v6"
@@ -64,14 +65,24 @@ title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = topBar
 
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, 0, 0, 30)
-statusLabel.Position = UDim2.new(0, 0, 0, 15)
+statusLabel.Size = UDim2.new(1, 0, 0, 25)
+statusLabel.Position = UDim2.new(0, 0, 0, 5)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Text = "Status: Parado"
 statusLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
 statusLabel.Font = Enum.Font.GothamMedium
 statusLabel.TextSize = 13
 statusLabel.Parent = contentFrame
+
+local statusLabel2 = Instance.new("TextLabel")
+statusLabel2.Size = UDim2.new(1, 0, 0, 25)
+statusLabel2.Position = UDim2.new(0, 0, 0, 28)
+statusLabel2.BackgroundTransparency = 1
+statusLabel2.Text = "Tempo: 00:00:00"
+statusLabel2.TextColor3 = Color3.fromRGB(180, 180, 180)
+statusLabel2.Font = Enum.Font.GothamMedium
+statusLabel2.TextSize = 12
+statusLabel2.Parent = contentFrame
 
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 240, 0, 45)
@@ -108,7 +119,6 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
 closeBtn.Parent = topBar
 
--- Sistema de Arrasto Fixado
 local dragging, dragInput, dragStart, startPos
 topBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -136,6 +146,18 @@ closeBtn.MouseButton1Click:Connect(function()
     autoFarmEnabled = false
     if currentTween then currentTween:Cancel() end
     screenGui:Destroy()
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        if autoFarmEnabled then
+            sessionTime = sessionTime + 1
+            local h = math.floor(sessionTime / 3600)
+            local m = math.floor((sessionTime % 3600) / 60)
+            local s = sessionTime % 60
+            statusLabel2.Text = string.format("Tempo: %02d:%02d:%02d", h, m, s)
+        end
+    end
 end)
 
 local function getHRP() return player.Character and player.Character:FindFirstChild("HumanoidRootPart") end
@@ -173,13 +195,12 @@ local function doAutoFarm()
         
         if not autoFarmEnabled then break end
         statusLabel.Text = "Status: Coletando Baú..."
-        tweenTo(Vector3.new(-56, -348, 9491)) -- Posição exata do baú
+        tweenTo(Vector3.new(-56, -348, 9491))
         
-        -- Garante que o noclip saia e o corpo toque no baú
         if getHRP() then 
             getHRP().CFrame = CFrame.new(-56, -358, 9491) 
         end
-        task.wait(3) -- Tempo para o jogo registrar o toque
+        task.wait(3)
         
         statusLabel.Text = "Status: Esperando Loop (15s)..."
         local t = 15 while t > 0 and autoFarmEnabled do task.wait(0.5) t = t - 0.5 end
@@ -197,6 +218,6 @@ toggleBtn.MouseButton1Click:Connect(function()
         toggleBtn.BackgroundColor3 = Color3.fromRGB(90, 60, 200)
         statusLabel.Text = "Status: Parado"
         if currentTween then currentTween:Cancel() end
-        if player.Character and player.Character:FindFirstChild("Humanoid") then player.Character.Humanoid.Health = 0 end
     end
 end)
+
