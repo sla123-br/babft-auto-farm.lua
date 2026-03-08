@@ -10,7 +10,6 @@ local speed = 362
 local currentTween = nil
 local isMinimized = false
 local sessionTime = 0
-local savedPosition = nil
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BABFT_UltraFarm_v6"
@@ -164,59 +163,21 @@ end)
 local function getHRP() return player.Character and player.Character:FindFirstChild("HumanoidRootPart") end
 
 local function tweenTo(targetPos)
-    while autoFarmEnabled do
-        local hrp = getHRP()
-        local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
-        
-        if not hrp or not humanoid or humanoid.Health <= 0 then
-            statusLabel.Text = "Status: Aguardando Respawn..."
-            player.CharacterAdded:Wait()
-            task.wait(1)
-            hrp = getHRP()
-            if hrp and savedPosition then
-                hrp.CFrame = CFrame.new(savedPosition)
-                task.wait(0.2)
-            end
+    local hrp = getHRP()
+    if not hrp or not autoFarmEnabled then return end
+    local dist = (hrp.Position - targetPos).Magnitude
+    currentTween = TweenService:Create(hrp, TweenInfo.new(dist / speed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
+    currentTween:Play()
+    local noclip = RunService.Stepped:Connect(function()
+        if not autoFarmEnabled or not hrp then return end
+        hrp.Velocity = Vector3.new(0, 0, 0)
+        for _, v in pairs(player.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
         end
-        
-        if not autoFarmEnabled then break end
-        
-        hrp = getHRP()
-        if not hrp then continue end
-        
-        local dist = (hrp.Position - targetPos).Magnitude
-        if dist < 5 then
-            savedPosition = nil
-            break
-        end
-        
-        currentTween = TweenService:Create(hrp, TweenInfo.new(dist / speed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
-        currentTween:Play()
-        
-        local noclip = RunService.Stepped:Connect(function()
-            if not autoFarmEnabled then return end
-            local currentHrp = getHRP()
-            if currentHrp then
-                currentHrp.Velocity = Vector3.new(0, 0, 0)
-                savedPosition = currentHrp.Position
-                for _, v in pairs(player.Character:GetDescendants()) do
-                    if v:IsA("BasePart") then v.CanCollide = false end
-                end
-            else
-                if currentTween then currentTween:Cancel() end
-            end
-        end)
-        
-        currentTween.Completed:Wait()
-        noclip:Disconnect()
-        currentTween = nil
-        
-        local checkHrp = getHRP()
-        if checkHrp and (checkHrp.Position - targetPos).Magnitude < 5 then
-            savedPosition = nil
-            break
-        end
-    end
+    end)
+    currentTween.Completed:Wait()
+    noclip:Disconnect()
+    currentTween = nil
 end
 
 local function doAutoFarm()
@@ -234,31 +195,45 @@ local function doAutoFarm()
         
         if not autoFarmEnabled then break end
         statusLabel.Text = "Status: Coletando Baú..."
-        local chestPos = Vector3.new(-55, -355, 9490)
+        local chestPos = Vector3.new(-55, -348, 9490) -- Posição exata do baú de ouro
         tweenTo(chestPos) 
         
-        statusLabel.Text = "Status: Registrando Ouro..."
+        -- Garante colisão e toque no final
+        for _, v in pairs(player.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = true end
+        end
+
+        -- Tenta disparar o evento de toque via script (FireTouchInterest)
+        task.spawn(function()
+            local chest = workspace:FindFirstChild("BoatStages") and workspace.BoatStages:FindFirstChild("NormalStages")
+            if chest then
+                local finalStage = chest:FindFirstChild("TheEnd")
+                if finalStage and finalStage:FindFirstChild("GoldenChest") then
+                    local part = finalStage.GoldenChest:FindFirstChild("Part")
+                    if part then
+                        firetouchinterest(hrp, part, 0)
+                        task.wait(0.1)
+                        firetouchinterest(hrp, part, 1)
+                    end
+                end
+            end
+        end)
         
-        -- Loop de 12 segundos com movimento aleatório num raio de 2 studs
+        statusLabel.Text = "Status: Registrando Ouro..."
         local t = 12 
         while t > 0 and autoFarmEnabled do
             local currentHrp = getHRP()
             if currentHrp then
-                local offset = Vector3.new(math.random(-20, 20)/10, 0, math.random(-20, 20)/10)
+                -- Wiggle de 2 studs para garantir contato físico se o firetouch falhar
+                local offset = Vector3.new(math.random(-20, 20)/10, -0.5, math.random(-20, 20)/10)
                 currentHrp.CFrame = CFrame.new(chestPos + offset)
             end
             task.wait(0.1)
             t = t - 0.1
         end
         
-        if not autoFarmEnabled then break end
-        
-        statusLabel.Text = "Status: Reiniciando Round..."
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.Health = 0
-        end
-        
-        task.wait(2)
+        statusLabel.Text = "Status: Reiniciando Ciclo..."
+        task.wait(1)
     end
 end
 
