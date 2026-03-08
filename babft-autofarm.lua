@@ -1,4 +1,4 @@
-local Players = game:GetService("Players")
+Local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -108,7 +108,6 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
 closeBtn.Parent = topBar
 
--- Sistema de Arrasto Fixado
 local dragging, dragInput, dragStart, startPos
 topBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -173,16 +172,26 @@ local function doAutoFarm()
         
         if not autoFarmEnabled then break end
         statusLabel.Text = "Status: Coletando Baú..."
-        tweenTo(Vector3.new(-56, -348, 9491)) -- Posição exata do baú
+        local chestPos = Vector3.new(-56, -348, 9491)
+        tweenTo(chestPos)
         
-        -- Garante que o noclip saia e o corpo toque no baú
         if getHRP() then 
             getHRP().CFrame = CFrame.new(-56, -358, 9491) 
         end
-        task.wait(3) -- Tempo para o jogo registrar o toque
+        task.wait(1)
         
-        statusLabel.Text = "Status: Esperando Loop (15s)..."
-        local t = 15 while t > 0 and autoFarmEnabled do task.wait(0.5) t = t - 0.5 end
+        statusLabel.Text = "Status: Registrando Ouro..."
+        local t = 11 
+        while t > 0 and autoFarmEnabled do
+            local currentHrp = getHRP()
+            if currentHrp then
+                local offX = (math.random() * 3) - 1.5
+                local offZ = (math.random() * 3) - 1.5
+                currentHrp.CFrame = CFrame.new(Vector3.new(-56 + offX, -358, 9491 + offZ))
+            end
+            task.wait(0.1)
+            t = t - 0.1
+        end
     end
 end
 
@@ -200,3 +209,4 @@ toggleBtn.MouseButton1Click:Connect(function()
         if player.Character and player.Character:FindFirstChild("Humanoid") then player.Character.Humanoid.Health = 0 end
     end
 end)
+
