@@ -9,7 +9,6 @@ local autoFarmEnabled = false
 local speed = 362
 local currentTween = nil
 local isMinimized = false
-local startTime = os.time()
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BABFT_UltraFarm_v6"
@@ -64,27 +63,15 @@ title.TextSize = 14
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = topBar
 
--- Status 1 (Atividade)
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, 0, 0, 25)
-statusLabel.Position = UDim2.new(0, 0, 0, 5)
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 0, 15)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Text = "Status: Parado"
 statusLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
 statusLabel.Font = Enum.Font.GothamMedium
 statusLabel.TextSize = 13
 statusLabel.Parent = contentFrame
-
--- Status 2 (Tempo de Sessão)
-local statusLabel2 = Instance.new("TextLabel")
-statusLabel2.Size = UDim2.new(1, 0, 0, 25)
-statusLabel2.Position = UDim2.new(0, 0, 0, 28)
-statusLabel2.BackgroundTransparency = 1
-statusLabel2.Text = "Sessão: 00:00:00"
-statusLabel2.TextColor3 = Color3.fromRGB(180, 180, 180)
-statusLabel2.Font = Enum.Font.GothamMedium
-statusLabel2.TextSize = 12
-statusLabel2.Parent = contentFrame
 
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 240, 0, 45)
@@ -121,7 +108,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
 closeBtn.Parent = topBar
 
--- Sistema de Arrasto
+-- Sistema de Arrasto Fixado
 local dragging, dragInput, dragStart, startPos
 topBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -136,17 +123,6 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local delta = input.Position - dragStart
         mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
--- Cronômetro em tempo real
-task.spawn(function()
-    while task.wait(1) do
-        local diff = os.time() - startTime
-        local h = math.floor(diff / 3600)
-        local m = math.floor((diff % 3600) / 60)
-        local s = diff % 60
-        statusLabel2.Text = string.format("Sessão: %02d:%02d:%02d", h, m, s)
     end
 end)
 
@@ -197,12 +173,13 @@ local function doAutoFarm()
         
         if not autoFarmEnabled then break end
         statusLabel.Text = "Status: Coletando Baú..."
-        tweenTo(Vector3.new(-56, -348, 9491))
+        tweenTo(Vector3.new(-56, -348, 9491)) -- Posição exata do baú
         
+        -- Garante que o noclip saia e o corpo toque no baú
         if getHRP() then 
             getHRP().CFrame = CFrame.new(-56, -358, 9491) 
         end
-        task.wait(3)
+        task.wait(3) -- Tempo para o jogo registrar o toque
         
         statusLabel.Text = "Status: Esperando Loop (15s)..."
         local t = 15 while t > 0 and autoFarmEnabled do task.wait(0.5) t = t - 0.5 end
