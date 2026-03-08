@@ -6,10 +6,11 @@ local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 local autoFarmEnabled = false
-local speed = 360
+local speed = 362
 local currentTween = nil
 local isMinimized = false
 local sessionTime = 0
+local savedPosition = nil
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BABFT_UltraFarm_v6"
@@ -163,21 +164,59 @@ end)
 local function getHRP() return player.Character and player.Character:FindFirstChild("HumanoidRootPart") end
 
 local function tweenTo(targetPos)
-    local hrp = getHRP()
-    if not hrp or not autoFarmEnabled then return end
-    local dist = (hrp.Position - targetPos).Magnitude
-    currentTween = TweenService:Create(hrp, TweenInfo.new(dist / speed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
-    currentTween:Play()
-    local noclip = RunService.Stepped:Connect(function()
-        if not autoFarmEnabled or not hrp then return end
-        hrp.Velocity = Vector3.new(0, 0, 0)
-        for _, v in pairs(player.Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
+    while autoFarmEnabled do
+        local hrp = getHRP()
+        local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+        
+        if not hrp or not humanoid or humanoid.Health <= 0 then
+            statusLabel.Text = "Status: Aguardando Respawn..."
+            player.CharacterAdded:Wait()
+            task.wait(1)
+            hrp = getHRP()
+            if hrp and savedPosition then
+                hrp.CFrame = CFrame.new(savedPosition)
+                task.wait(0.2)
+            end
         end
-    end)
-    currentTween.Completed:Wait()
-    noclip:Disconnect()
-    currentTween = nil
+        
+        if not autoFarmEnabled then break end
+        
+        hrp = getHRP()
+        if not hrp then continue end
+        
+        local dist = (hrp.Position - targetPos).Magnitude
+        if dist < 5 then
+            savedPosition = nil
+            break
+        end
+        
+        currentTween = TweenService:Create(hrp, TweenInfo.new(dist / speed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
+        currentTween:Play()
+        
+        local noclip = RunService.Stepped:Connect(function()
+            if not autoFarmEnabled then return end
+            local currentHrp = getHRP()
+            if currentHrp then
+                currentHrp.Velocity = Vector3.new(0, 0, 0)
+                savedPosition = currentHrp.Position
+                for _, v in pairs(player.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then v.CanCollide = false end
+                end
+            else
+                if currentTween then currentTween:Cancel() end
+            end
+        end)
+        
+        currentTween.Completed:Wait()
+        noclip:Disconnect()
+        currentTween = nil
+        
+        local checkHrp = getHRP()
+        if checkHrp and (checkHrp.Position - targetPos).Magnitude < 5 then
+            savedPosition = nil
+            break
+        end
+    end
 end
 
 local function doAutoFarm()
@@ -195,15 +234,31 @@ local function doAutoFarm()
         
         if not autoFarmEnabled then break end
         statusLabel.Text = "Status: Coletando Baú..."
-        tweenTo(Vector3.new(-56, -348, 9491))
+        local chestPos = Vector3.new(-55, -355, 9490)
+        tweenTo(chestPos) 
         
-        if getHRP() then 
-            getHRP().CFrame = CFrame.new(-56, -358, 9491) 
+        statusLabel.Text = "Status: Registrando Ouro..."
+        
+        -- Loop de 12 segundos com movimento aleatório num raio de 2 studs
+        local t = 12 
+        while t > 0 and autoFarmEnabled do
+            local currentHrp = getHRP()
+            if currentHrp then
+                local offset = Vector3.new(math.random(-20, 20)/10, 0, math.random(-20, 20)/10)
+                currentHrp.CFrame = CFrame.new(chestPos + offset)
+            end
+            task.wait(0.1)
+            t = t - 0.1
         end
-        task.wait(3)
         
-        statusLabel.Text = "Status: Esperando Loop (12s)..."
-        local t = 12 while t > 0 and autoFarmEnabled do task.wait(0.5) t = t - 0.5 end
+        if not autoFarmEnabled then break end
+        
+        statusLabel.Text = "Status: Reiniciando Round..."
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.Health = 0
+        end
+        
+        task.wait(2)
     end
 end
 
