@@ -202,8 +202,8 @@ local function doAutoFarm()
         end
         task.wait(3)
         
-        statusLabel.Text = "Status: Esperando Loop (15s)..."
-        local t = 15 while t > 0 and autoFarmEnabled do task.wait(0.5) t = t - 0.5 end
+        statusLabel.Text = "Status: Esperando Loop (12s)..."
+        local t = 12 while t > 0 and autoFarmEnabled do task.wait(0.5) t = t - 0.5 end
     end
 end
 
