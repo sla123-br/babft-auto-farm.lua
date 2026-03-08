@@ -6,7 +6,7 @@ local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 local autoFarmEnabled = false
-local speed = 362
+local speed = 360
 local currentTween = nil
 local isMinimized = false
 local sessionTime = 0
