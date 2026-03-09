@@ -3,12 +3,21 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
+
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
 local autoFarmEnabled = false
 local speed = 360
 local currentTween = nil
 local isMinimized = false
+local noclipConnection = nil
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BABFT_UltraFarm_v6"
@@ -108,17 +117,28 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
 closeBtn.Parent = topBar
 
--- Sistema de Arrasto Fixado
 local dragging, dragInput, dragStart, startPos
+
 topBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true dragStart = input.Position startPos = mainFrame.Position
-        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+        dragging = true 
+        dragStart = input.Position 
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function() 
+            if input.UserInputState == Enum.UserInputState.End then 
+                dragging = false 
+            end 
+        end)
     end
 end)
+
 topBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then 
+        dragInput = input 
+    end
 end)
+
 UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local delta = input.Position - dragStart
@@ -135,27 +155,62 @@ end)
 closeBtn.MouseButton1Click:Connect(function()
     autoFarmEnabled = false
     if currentTween then currentTween:Cancel() end
+    if noclipConnection then noclipConnection:Disconnect() end
     screenGui:Destroy()
 end)
 
-local function getHRP() return player.Character and player.Character:FindFirstChild("HumanoidRootPart") end
+local function getHRP() 
+    return player.Character and player.Character:FindFirstChild("HumanoidRootPart") 
+end
 
 local function tweenTo(targetPos)
     local hrp = getHRP()
     if not hrp or not autoFarmEnabled then return end
+    
     local dist = (hrp.Position - targetPos).Magnitude
     currentTween = TweenService:Create(hrp, TweenInfo.new(dist / speed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
-    currentTween:Play()
-    local noclip = RunService.Stepped:Connect(function()
+    
+    if noclipConnection then noclipConnection:Disconnect() end
+    noclipConnection = RunService.Stepped:Connect(function()
         if not autoFarmEnabled or not hrp then return end
-        hrp.Velocity = Vector3.new(0, 0, 0)
+        hrp.Velocity = Vector3.zero
         for _, v in pairs(player.Character:GetDescendants()) do
             if v:IsA("BasePart") then v.CanCollide = false end
         end
     end)
+    
+    currentTween:Play()
     currentTween.Completed:Wait()
-    noclip:Disconnect()
+    
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
     currentTween = nil
+end
+
+local function antiAfkSequence()
+    local keys = {Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D, Enum.KeyCode.Space}
+    for _, key in ipairs(keys) do
+        if not autoFarmEnabled then break end
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        task.wait(0.3)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+        task.wait(1)
+    end
+end
+
+local function antiAfkLoop()
+    while autoFarmEnabled do
+        local t = 300 
+        while t > 0 and autoFarmEnabled do
+            task.wait(1)
+            t = t - 1
+        end
+        if autoFarmEnabled then
+            antiAfkSequence()
+        end
+    end
 end
 
 local function doAutoFarm()
@@ -173,16 +228,19 @@ local function doAutoFarm()
         
         if not autoFarmEnabled then break end
         statusLabel.Text = "Status: Coletando Baú..."
-        tweenTo(Vector3.new(-56, -348, 9491)) -- Posição exata do baú
+        tweenTo(Vector3.new(-56, -348, 9491))
         
-        -- Garante que o noclip saia e o corpo toque no baú
         if getHRP() then 
             getHRP().CFrame = CFrame.new(-56, -358, 9491) 
         end
-        task.wait(3) -- Tempo para o jogo registrar o toque
+        task.wait(3)
         
         statusLabel.Text = "Status: Esperando Loop (15s)..."
-        local t = 15 while t > 0 and autoFarmEnabled do task.wait(0.5) t = t - 0.5 end
+        local t = 15 
+        while t > 0 and autoFarmEnabled do 
+            task.wait(0.5) 
+            t = t - 0.5 
+        end
     end
 end
 
@@ -192,11 +250,15 @@ toggleBtn.MouseButton1Click:Connect(function()
         toggleBtn.Text = "PARAR FARM"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
         task.spawn(doAutoFarm)
+        task.spawn(antiAfkLoop)
     else
         toggleBtn.Text = "INICIAR FARM"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(90, 60, 200)
         statusLabel.Text = "Status: Parado"
-        if currentTween then currentTween:Cancel() end
-        if player.Character and player.Character:FindFirstChild("Humanoid") then player.Character.Humanoid.Health = 0 end
+        if currentTween then currentTween:Cancel() currentTween = nil end
+        if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
+        if player.Character and player.Character:FindFirstChild("Humanoid") then 
+            player.Character.Humanoid.Health = 0 
+        end
     end
 end)
