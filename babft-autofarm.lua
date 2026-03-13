@@ -1,3 +1,5 @@
+local ReplicatedStorage game:GetService("ReplicatedStorage")
+local localPlayer = Players.LocalPlayer
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -9,6 +11,24 @@ local autoFarmEnabled = false
 local speed = 360
 local currentTween = nil
 local isMinimized = false
+local mensagem = "🫪"
+local tempoSegundos = 600
+
+-- Anti-AFK
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    game:GetService("VirtualUser"):CaptureController()
+    game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+end)
+
+-- Loop do Chat
+while true do
+    local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+    if chatEvents then
+        chatEvents.SayMessageRequest:FireServer(mensagem, "All")
+    end
+    task.wait(tempoSegundos)
+end
+
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BABFT_UltraFarm_v6"
